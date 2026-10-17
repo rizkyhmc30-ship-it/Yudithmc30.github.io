@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NabungKu - YUDITSTUDIO</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:#0d1117;color:white}
+.page{display:none}
+.active{display:block}
+.center{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.card{background:#161b22;padding:25px;border-radius:18px;width:100%;max-width:420px;box-shadow:0 0 20px rgba(0,0,0,.4)}
+h1,h2{text-align:center;color:#d4af37;margin-bottom:15px}
+input,select{width:100%;padding:12px;margin:8px 0;border:none;border-radius:10px;background:#21262d;color:white}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;background:#d4af37;color:black;font-weight:bold;cursor:pointer}
+button:hover{opacity:.9}
+.small{font-size:12px;color:#aaa;text-align:center;margin-top:10px}
+header{background:#161b22;padding:15px;display:flex;justify-content:space-between;align-items:center}
+main{padding:15px}
+.box{background:#161b22;border-radius:15px;padding:15px;margin-bottom:15px}
+.balance{font-size:32px;color:#d4af37;font-weight:bold}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #333;font-size:13px}
+.green{color:#4ade80}
+.red{color:#f87171}
+footer{text-align:center;color:#888;padding:20px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage" class="page active">
+<div class="center">
+<div class="card">
+<h1>NabungKu</h1>
+<p style="text-align:center;color:#bbb;margin-bottom:15px;">Creator: <b>YUDITSTUDIO</b></p>
+
+<h3>Buat Akun</h3>
+<input id="newUser" placeholder="Nama akun">
+<input id="newPin" type="password" placeholder="PIN">
+<button onclick="createAccount()">Buat Akun</button>
+
+<hr style="margin:20px 0;border:1px solid #333">
+
+<h3>Pilih Akun</h3>
+<select id="accountList"></select>
+<input id="loginPin" type="password" placeholder="Masukkan PIN">
+<button onclick="login()">Masuk</button>
+
+<p class="small">Data akun tersimpan di perangkat ini.</p>
+</div>
+</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="appPage" class="page">
+<header>
+<div>
+<h2 style="margin:0">NabungKu</h2>
+<small id="userName"></small>
+</div>
+<button style="width:auto;padding:8px 14px" onclick="logout()">Keluar</button>
+</header>
+
+<main>
+
+<div class="box">
+<div>Saldo Tabungan</div>
+<div id="saldo" class="balance">Rp0</div>
+</div>
+
+<div class="box">
+<h3>Tambah Transaksi</h3>
+<select id="jenis">
+<option value="in">Pemasukan</option>
+<option value="out">Pengeluaran</option>
+</select>
+<input id="nominal" type="number" placeholder="Nominal">
+<input id="catatan" placeholder="Catatan">
+<button onclick="addTransaction()">Simpan Transaksi</button>
+</div>
+
+<div class="box">
+<h3>Target Tabungan</h3>
+<input id="targetInput" type="number" placeholder="Masukkan target">
+<button onclick="saveTarget()">Simpan Target</button>
+<p id="targetText" style="margin-top:10px"></p>
+</div>
+
+<div class="box">
+<h3>Riwayat Transaksi</h3>
+<table>
+<thead>
+<tr><th>Jenis</th><th>Nominal</th><th>Catatan</th></tr>
+</thead>
+<tbody id="history"></tbody>
+</table>
+</div>
+
+</main>
+
+<footer>© 2026 YUDITSTUDIO • Elegant Savings</footer>
+</div>
+
+<script>
+const KEY="nabungku_yuditstudio";
+let currentUser=null;
+
+function loadData(){
+return JSON.parse(localStorage.getItem(KEY)||'{"accounts":{}}');
+}
+function saveData(d){
+localStorage.setItem(KEY,JSON.stringify(d));
+}
+function refreshAccounts(){
+const data=loadData();
+const sel=document.getElementById("accountList");
+sel.innerHTML="";
+Object.keys(data.accounts).forEach(name=>{
+let o=document.createElement("option");
+o.value=name;o.textContent=name;
+sel.appendChild(o);
+});
+}
+refreshAccounts();
+
+function createAccount(){
+let name=document.getElementById("newUser").value.trim();
+let pin=document.getElementById("newPin").value.trim();
+if(!name||!pin)return alert("Isi nama dan PIN.");
+let data=loadData();
+if(data.accounts[name])return alert("Nama sudah ada.");
+data.accounts[name]={pin,saldo:0,target:0,history:[]};
+saveData(data);
+refreshAccounts();
+alert("Akun berhasil dibuat!");
+}
+
+function login(){
+let name=document.getElementById("accountList").value;
+let pin=document.getElementById("loginPin").value;
+let data=loadData();
+if(!data.accounts[name])return alert("Pilih akun.");
+if(data.accounts[name].pin!==pin)return alert("PIN salah.");
+currentUser=name;
+document.getElementById("loginPage").classList.remove("active");
+document.getElementById("appPage").classList.add("active");
+document.getElementById("userName").textContent=name;
+render();
+}
+
+function logout(){
+currentUser=null;
+document.getElementById("appPage").classList.remove("active");
+document.getElementById("loginPage").classList.add("active");
+}
+
+function render(){
+let data=loadData();
+let acc=data.accounts[currentUser];
+document.getElementById("saldo").textContent="Rp"+acc.saldo.toLocaleString("id-ID");
+document.getElementById("targetText").textContent="Target: Rp"+acc.target.toLocaleString("id-ID");
+let tbody=document.getElementById("history");
+tbody.innerHTML="";
+acc.history.slice().reverse().forEach(t=>{
+tbody.innerHTML+=`<tr>
+<td class="${t.type=="in"?"green":"red"}">${t.type=="in"?"Masuk":"Keluar"}</td>
+<td>Rp${t.amount.toLocaleString("id-ID")}</td>
+<td>${t.note}</td>
+</tr>`;
+});
+}
+
+function addTransaction(){
+let amount=parseInt(document.getElementById("nominal").value);
+let type=document.getElementById("jenis").value;
+let note=document.getElementById("catatan").value||"-";
+if(!amount||amount<=0)return alert("Nominal tidak valid.");
+let data=loadData();
+let acc=data.accounts[currentUser];
+if(type=="in")acc.saldo+=amount;
+else{
+if(acc.saldo<amount)return alert("Saldo tidak cukup.");
+acc.saldo-=amount;
+}
+acc.history.push({type,amount,note});
+saveData(data);
+document.getElementById("nominal").value="";
+document.getElementById("catatan").value="";
+render();
+alert("Transaksi berhasil disimpan!");
+}
+
+function saveTarget(){
+let target=parseInt(document.getElementById("targetInput").value)||0;
+let data=loadData();
+data.accounts[currentUser].target=target;
+saveData(data);
+render();
+}
+</script>
+
+</body>
+</html>
